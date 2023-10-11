@@ -4,9 +4,25 @@ from typing import Annotated
 import models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 models.Base.metadata.create_all(bind = engine)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 from pydantic import BaseModel
 
@@ -14,6 +30,7 @@ from pydantic import BaseModel
 class UserCreate(BaseModel):
     nama: str
     device: str
+    password: str
     jumlah_hewan: int
 
 class User(UserCreate):
@@ -21,6 +38,10 @@ class User(UserCreate):
 
     class Config:
         orm_mode = True
+
+class UserCredentials(BaseModel):
+    nama:str
+    password:str
 
 class PetBase(BaseModel):
     nama: str
@@ -68,3 +89,10 @@ async def create_user(user: UserCreate, db: db_dependency):
     db_user = models.User(**user.dict())
     db.add(db_user)
     db.commit()
+
+@app.post("/login")
+def login_user(user: UserCredentials, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.nama == user.nama).first()
+    if db_user is None or db_user.password != user.password:
+        raise HTTPException(status_code=400, detail="Invalid credentials")
+    return {"message": "Login successful"}

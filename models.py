@@ -9,6 +9,7 @@ class User(Base):
     __tablename__ = 'user'
 
     user_id = Column(Integer, primary_key=True, index=True)
+    password = Column(String(60))
     nama = Column(String(50))
     device = Column(String(50), nullable = True)
     jumlah_hewan = Column(Integer)
