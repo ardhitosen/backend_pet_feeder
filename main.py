@@ -6,6 +6,8 @@ from database import engine, SessionLocal
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 
+
+
 app = FastAPI()
 models.Base.metadata.create_all(bind = engine)
 
@@ -96,3 +98,10 @@ def login_user(user: UserCredentials, db: Session = Depends(get_db)):
     if db_user is None or db_user.password != user.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
     return {"message": "Login successful"}
+
+@app.get("/pets/{pet_id}", status_code=status.HTTP_200_OK)
+async def get_pet(pet_id: int, db: db_dependency):
+    pet = db.query(models.Pet).filter(models.Pet.pet_id == pet_id).first()
+    if pet is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    return pet

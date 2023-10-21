@@ -27,4 +27,5 @@ archive.zip
 .cache
 
 # macOS
-.DS_Store
+.DS_Stor
+Pipfile
