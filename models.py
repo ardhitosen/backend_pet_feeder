@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, select
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from database import Base
@@ -11,12 +11,7 @@ class User(Base):
     user_id = Column(Integer, primary_key=True, index=True)
     password = Column(String(60))
     nama = Column(String(50))
-    device = Column(String(50), nullable = True)
     jumlah_hewan = Column(Integer)
-
-    # Define the relationship with pets and devices
-    pets = relationship("Pet", back_populates="owner")
-    devices = relationship("Device", back_populates="owner")
 
 class Pet(Base):
     __tablename__ = 'pets'
@@ -28,10 +23,10 @@ class Pet(Base):
     tipe_hewan = Column(String(30))
     ras_hewan = Column(String(30))
     umur = Column(Integer)
-    user_id = Column(Integer, ForeignKey("user.user_id"))
+    device_id = Column(Integer, ForeignKey("devices.device_id"))
 
-    # Define the relationship with users
-    owner = relationship("User", back_populates="pets")
+    device = relationship("Device", back_populates="pets")
+
 
 class Device(Base):
     __tablename__ = 'devices'
@@ -41,4 +36,4 @@ class Device(Base):
     user_id = Column(Integer, ForeignKey("user.user_id"))
 
     # Define the relationship with users
-    owner = relationship("User", back_populates="devices")
+    pets = relationship("Pet", back_populates="device")

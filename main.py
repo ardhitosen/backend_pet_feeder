@@ -5,7 +5,7 @@ import models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
-
+from sqlalchemy import select
 
 
 app = FastAPI()
@@ -31,12 +31,13 @@ from pydantic import BaseModel
 
 class UserCreate(BaseModel):
     nama: str
-    device: str
     password: str
     jumlah_hewan: int
+    
 
 class User(UserCreate):
     user_id: int
+    pet_id: int
 
     class Config:
         orm_mode = True
@@ -59,7 +60,6 @@ class PetCreate(PetBase):
 class Pet(PetBase):
     pet_id: int
     user_id: int
-    device_id: int
 
     class Config:
         orm_mode = True
@@ -98,6 +98,12 @@ def login_user(user: UserCredentials, db: Session = Depends(get_db)):
     if db_user is None or db_user.password != user.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
     return {"message": "Login successful"}
+
+@app.post("/pet/", status_code = status.HTTP_201_CREATED)
+async def create_pet(pets: PetCreate, db: db_dependency):
+    db_pet = models.Pet(**pets.dict())
+    db.add(db_pet)
+    db.commit()
 
 @app.get("/pets/{pet_id}", status_code=status.HTTP_200_OK)
 async def get_pet(pet_id: int, db: db_dependency):
