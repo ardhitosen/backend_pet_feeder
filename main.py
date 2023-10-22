@@ -97,11 +97,18 @@ def login_user(user: UserCredentials, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.nama == user.nama).first()
     if db_user is None or db_user.password != user.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
-    return {"message": "Login successful"}
+    return db_user
 
-@app.get("/pets/{pet_id}", status_code=status.HTTP_200_OK)
-async def get_pet(pet_id: int, db: db_dependency):
-    pet = db.query(models.Pet).filter(models.Pet.pet_id == pet_id).first()
+@app.get("/pets/{device_id}", status_code=status.HTTP_200_OK)
+async def get_pet(device_id: int, db: db_dependency):
+    pet = db.query(models.Pet).filter(models.Pet.device_id == device_id).first()
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
+
+@app.post("/devices/{user_id}",status_code=status.HTTP_200_OK)
+async def get_devices(user_id: int,db: db_dependency):
+    devices = db.query(models.Device).filter(models.Device.user_id == user_id).all()
+    if devices is None:
+        raise HTTPException(status_code=404, detail="Devices not found")
+    return devices
