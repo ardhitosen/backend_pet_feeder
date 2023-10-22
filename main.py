@@ -105,9 +105,9 @@ async def create_pet(pets: PetCreate, db: db_dependency):
     db.add(db_pet)
     db.commit()
 
-@app.get("/pets/{pet_id}", status_code=status.HTTP_200_OK)
-async def get_pet(pet_id: int, db: db_dependency):
-    pet = db.query(models.Pet).filter(models.Pet.pet_id == pet_id).first()
+@app.get("/pets/{device_id}", status_code=status.HTTP_200_OK)
+async def get_pet(device_id: int, db: db_dependency):
+    pet = db.query(models.Pet).filter(models.Pet.device_id== device_id).first()
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
