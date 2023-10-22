@@ -65,7 +65,7 @@ class Pet(PetBase):
         orm_mode = True
 
 class DeviceBase(BaseModel):
-    models: str
+    model: str
 
 class DeviceCreate(DeviceBase):
     pass
@@ -86,6 +86,8 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
+
+################ Bagian User ################
 @app.post("/user/", status_code = status.HTTP_201_CREATED)
 async def create_user(user: UserCreate, db: db_dependency):
     db_user = models.User(**user.dict())
@@ -99,22 +101,32 @@ def login_user(user: UserCredentials, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     return db_user
 
-@app.post("/pet/", status_code = status.HTTP_201_CREATED)
-async def create_pet(pets: PetCreate, db: db_dependency):
-    db_pet = models.Pet(**pets.dict())
+
+################ Bagian Pet ################
+@app.post("/pet/{device_id}", status_code = status.HTTP_201_CREATED)
+async def create_pet(pets: PetCreate, device_id: int, db: db_dependency):
+    db_pet = models.Pet(**pets.dict(), device_id = device_id)
     db.add(db_pet)
     db.commit()
 
-@app.get("/pets/{device_id}", status_code=status.HTTP_200_OK)
+@app.get("/pet/{device_id}", status_code=status.HTTP_200_OK)
 async def get_pet(device_id: int, db: db_dependency):
-    pet = db.query(models.Pet).filter(models.Pet.device_id== device_id).first()
+    pet = db.query(models.Pet).filter(models.Pet.device_id == device_id).first()
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
 
-@app.post("/devices/{user_id}",status_code=status.HTTP_200_OK)
+
+################ Bagian Device ################
+@app.get("/device/{user_id}",status_code=status.HTTP_200_OK)
 async def get_devices(user_id: int,db: db_dependency):
     devices = db.query(models.Device).filter(models.Device.user_id == user_id).all()
     if devices is None:
         raise HTTPException(status_code=404, detail="Devices not found")
     return devices
+
+@app.post("/device/{user_id}", status_code = status.HTTP_201_CREATED)
+async def create_device(devices: DeviceCreate, user_id: int, db: db_dependency):
+    db_device = models.Device(**devices.dict(), user_id = user_id)
+    db.add(db_device)
+    db.commit()
