@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, status
+from datetime import time
 from pydantic import BaseModel
 from typing import Annotated
 import models
@@ -28,7 +29,6 @@ class UserCreate(BaseModel):
 
 class User(UserCreate):
     user_id: int
-    pet_id: int
 
     class Config:
         orm_mode = True
@@ -51,7 +51,7 @@ class PetCreate(PetBase):
 
 class Pet(PetBase):
     pet_id: int
-    user_id: int
+    device_id: int
 
     class Config:
         orm_mode = True
@@ -118,6 +118,20 @@ async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
         setattr(pet, field, value)
     db.commit()
     return pet_update
+
+@app.get("/pet/{device_id}/feedtime",status_code=status.HTTP_200_OK, response_model=str)
+async def get_feedTime(device_id: int,db: db_dependency):
+    feedTime = db.query(models.Pet.jam_makan).filter(models.Pet.device_id == device_id).first()
+    if feedTime is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    jam_makan = feedTime[0]
+
+    if jam_makan is not None:
+        # Convert the time to a string in "HH:MM:SS" format
+        jam_makan_str = jam_makan.strftime("%H:%M:%S")
+        return jam_makan_str
+    else:
+        return None
 
 
 ################ Bagian Device ################
