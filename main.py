@@ -108,6 +108,17 @@ async def get_pet(device_id: int, db: db_dependency):
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
 
+@app.post("/pet/edit/{pet_id}", status_code = status.HTTP_201_CREATED)
+async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
+    pet = db.query(models.Pet).filter(models.Pet.pet_id == pet_id).first()
+    if pet is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    pet_update.porsi_makan = pet_update.berat/1000 * 30
+    for field, value in pet_update.dict().items():
+        setattr(pet, field, value)
+    db.commit()
+    return pet_update
+
 
 ################ Bagian Device ################
 @app.get("/device/{user_id}",status_code=status.HTTP_200_OK)
