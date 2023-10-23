@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from datetime import time
 from pydantic import BaseModel
-from typing import Annotated, Optional
+from typing import Annotated, Optional, List
 import models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
@@ -43,10 +43,10 @@ class PetBase(BaseModel):
     tipe_hewan: str
     ras_hewan: str
     umur: int
-    jam_makan: Optional[str] = None
+    jam_makan: Optional[time] = None
 
 class updateJamMakan(BaseModel):
-    jam_makan: str
+    jam_makan: time
 
 class PetCreate(PetBase):
     pass
@@ -149,12 +149,12 @@ async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
     return {"message": "pet updated successfully"}
 
 
-@app.put("/pet/edit/jam_makan/{device_id}", status_code= status.HTTP_202_ACCEPTED)
-async def edit_jam_makan(update_jamMakan: updateJamMakan, device_id: int, db: db_dependency):
-    pet = db.query(models.Pet).filter(models.Pet.device_id == device_id).first()
+@app.put("/pet/edit/jam_makan/{pet_id}", status_code= status.HTTP_202_ACCEPTED)
+async def edit_jam_makan(update_jamMakan: updateJamMakan, pet_id: int, db: db_dependency):
+    pet = db.query(models.Pet).filter(models.Pet.pet_id == pet_id).first()
     if not pet:
         raise HTTPException(status_code=404, detail="Pet not found")
-    pet.jam_makan = update_jamMakan.jam_makan
+    pet.jam_makan = update_jamMakan.jam_makan.strftime("%H:%M:%S")
     db.commit()
     db.close()
     return {"message": "jam_makan updated successfully"}
