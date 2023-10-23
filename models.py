@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, select
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, select, Time
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from database import Base
@@ -23,6 +23,7 @@ class Pet(Base):
     tipe_hewan = Column(String(30))
     ras_hewan = Column(String(30))
     umur = Column(Integer)
+    jam_makan = Column(Time)
     device_id = Column(Integer, ForeignKey("devices.device_id"))
 
     device = relationship("Device", back_populates="pets")

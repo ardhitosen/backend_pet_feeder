@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-
 app = FastAPI()
 models.Base.metadata.create_all(bind = engine)
 
@@ -19,14 +18,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-from pydantic import BaseModel
 
 
 class UserCreate(BaseModel):
@@ -53,6 +44,7 @@ class PetBase(BaseModel):
     tipe_hewan: str
     ras_hewan: str
     umur: int
+    jam_makan: str
 
 class PetCreate(PetBase):
     pass
