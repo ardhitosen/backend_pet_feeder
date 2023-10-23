@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from pydantic import BaseModel
-from typing import Annotated
+from typing import Annotated, Optional
 import models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
@@ -44,7 +44,7 @@ class PetBase(BaseModel):
     tipe_hewan: str
     ras_hewan: str
     umur: int
-    jam_makan: str
+    jam_makan: Optional[str] = None
 
 class PetCreate(PetBase):
     pass
@@ -114,7 +114,8 @@ async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
     pet_update.porsi_makan = pet_update.berat/1000 * 30
-    for field, value in pet_update.dict().items():
+    pet_update_data  = pet_update.dict(exclude={"jam_makan"})
+    for field, value in pet_update_data.items():
         setattr(pet, field, value)
     db.commit()
     return pet_update
