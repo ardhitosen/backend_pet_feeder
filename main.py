@@ -104,6 +104,7 @@ async def create_pet(pets: PetBase, device_id: int, db: db_dependency):
     db.add(db_pet)
     db.commit()
 
+
 @app.get("/pet/{device_id}", status_code=status.HTTP_200_OK)
 async def get_pet(device_id: int, db: db_dependency):
     pet = db.query(models.Pet).filter(models.Pet.device_id == device_id).first()
@@ -126,6 +127,14 @@ async def get_feedTime(device_id: int,db: db_dependency):
     else:
         return None
     
+@app.get("/pet/{device_id}/foodporsion", status_code=status.HTTP_200_OK)
+async def get_foodPorsion(device_id: int, db:db_dependency):
+    pet = db.query(models.Pet.porsi_makan).filter(models.Pet.device_id == device_id).first()
+    if pet is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    porsi = pet[0]
+    return porsi    
+    
 @app.put("/pet/edit/{pet_id}", status_code = status.HTTP_202_ACCEPTED)
 async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
     pet = db.query(models.Pet).filter(models.Pet.pet_id == pet_id).first()
@@ -138,6 +147,7 @@ async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
     db.commit()
     db.close()
     return {"message": "pet updated successfully"}
+
 
 @app.put("/pet/edit/jam_makan/{device_id}", status_code= status.HTTP_202_ACCEPTED)
 async def edit_jam_makan(update_jamMakan: updateJamMakan, device_id: int, db: db_dependency):
