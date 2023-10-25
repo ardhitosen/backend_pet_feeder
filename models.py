@@ -10,8 +10,9 @@ class User(Base):
 
     user_id = Column(Integer, primary_key=True, index=True)
     password = Column(String(60))
-    nama = Column(String(50))
-    jumlah_hewan = Column(Integer)
+    name = Column(String(50))
+    full_name = Column(String(50))
+    
 
 class Pet(Base):
     __tablename__ = 'pets'
