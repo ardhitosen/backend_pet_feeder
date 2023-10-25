@@ -87,6 +87,7 @@ async def create_user(user: UserCreate, db: db_dependency):
     db_user = models.User(**user.dict())
     db.add(db_user)
     db.commit()
+    
 
 @app.post("/login")
 def login_user(user: UserCredentials, db: Session = Depends(get_db)):
@@ -127,6 +128,7 @@ async def get_feedTime(device_id: int,db: db_dependency):
     else:
         return None
     
+    
 @app.get("/pet/{device_id}/foodporsion", status_code=status.HTTP_200_OK)
 async def get_foodPorsion(device_id: int, db:db_dependency):
     pet = db.query(models.Pet.porsi_makan).filter(models.Pet.device_id == device_id).first()
@@ -134,6 +136,7 @@ async def get_foodPorsion(device_id: int, db:db_dependency):
         raise HTTPException(status_code=404, detail="Pet not found")
     porsi = pet[0]
     return porsi    
+
     
 @app.put("/pet/edit/{pet_id}", status_code = status.HTTP_202_ACCEPTED)
 async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
@@ -167,6 +170,7 @@ async def get_devices(user_id: int,db: db_dependency):
     if devices is None:
         raise HTTPException(status_code=404, detail="Devices not found")
     return devices
+
 
 @app.post("/device/{user_id}", status_code = status.HTTP_201_CREATED)
 async def create_device(devices: DeviceCreate, user_id: int, db: db_dependency):
