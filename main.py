@@ -7,8 +7,10 @@ from database import engine, SessionLocal
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
+import auth
 
 app = FastAPI()
+app.include_router(auth.router)
 models.Base.metadata.create_all(bind = engine)
 
 app.add_middleware(
@@ -22,9 +24,9 @@ app.add_middleware(
 
 
 class UserCreate(BaseModel):
-    nama: str
+    name: str
     password: str
-    jumlah_hewan: int
+    full_name: str
     
 
 class User(UserCreate):
@@ -59,6 +61,7 @@ class Pet(PetBase):
         orm_mode = True
 
 class DeviceBase(BaseModel):
+    mac_address: str
     model: str
 
 class DeviceCreate(DeviceBase):

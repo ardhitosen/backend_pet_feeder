@@ -35,6 +35,7 @@ class Device(Base):
 
     device_id = Column(Integer, primary_key=True, index=True)
     model = Column(String(30))
+    mac_address = Column(String(50))
     user_id = Column(Integer, ForeignKey("user.user_id"))
 
     # Define the relationship with users
