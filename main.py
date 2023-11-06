@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, status
-from datetime import time
+from datetime import time, date
 from pydantic import BaseModel
 from typing import Annotated, Optional, List
 import models
@@ -45,10 +45,6 @@ class PetBase(BaseModel):
     tipe_hewan: str
     ras_hewan: str
     umur: int
-    jam_makan: Optional[time] = None
-
-class updateJamMakan(BaseModel):
-    jam_makan: time
 
 class PetCreate(PetBase):
     pass
@@ -70,6 +66,31 @@ class DeviceCreate(DeviceBase):
 class Device(DeviceBase):
     device_id: int
     user_id: int
+    mac_address: int
+
+    class Config:
+        orm_mode = True
+
+class FeedingScheduleBase(BaseModel):
+    jam_makan = time
+
+class ScheduleCreate(FeedingScheduleBase):
+    pass
+
+class FeedingSchedule(FeedingScheduleBase):
+    schedule_id: int
+    pet_id: int
+
+class FeedingHistoryBase(BaseModel):
+    feeding_date: date
+    dimakan: int
+
+class CreateFeedingHistory(FeedingHistoryBase):
+    pass
+    
+class FeedingHistory(FeedingHistoryBase):
+    feeding_id: int
+    schedule_id: int
 
     class Config:
         orm_mode = True
@@ -119,22 +140,27 @@ async def get_pet(device_id: int, db: db_dependency):
 
 @app.get("/pet/{pet_id}/feedtime",status_code=status.HTTP_200_OK, response_model=str)
 async def get_feedTime(pet_id: int,db: db_dependency):
-    feedTime = db.query(models.Pet.jam_makan).filter(models.Pet.pet_id == pet_id).first()
+    feedTime = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == pet_id).all()
     if feedTime is None:
         raise HTTPException(status_code=404, detail="Pet not found")
-    jam_makan = feedTime[0]
+    jam_makan_str_list = [time[0].strftime("%H:%M:%S") for time in feedTime if time[0] is not None]
+    return jam_makan_str_list
 
-    if jam_makan is not None:
-        # Convert the time to a string in "HH:MM:SS" format
-        jam_makan_str = jam_makan.strftime("%H:%M:%S")
-        return jam_makan_str
-    else:
-        return None
+
+@app.put("/pet/schedule/edit/{schedule_id}", status_code = status.HTTP_202_ACCEPTED)
+async def edit_schedule(time_edited: time, schedule_id: int,db: db_dependency):
+    schedule = db.query(models.FeedingSchedule).filter(models.FeedingSchedule.schedule_id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    schedule.jam_makan = time_edited
+    db.commit()
+    db.close()
+    return {"message": "schedule updated"}
     
     
-@app.get("/pet/{device_id}/foodporsion", status_code=status.HTTP_200_OK)
-async def get_foodPorsion(device_id: int, db:db_dependency):
-    pet = db.query(models.Pet.porsi_makan).filter(models.Pet.device_id == device_id).first()
+@app.get("/pet/{pet_id}/foodporsion", status_code=status.HTTP_200_OK)
+async def get_foodPorsion(pet_id: int, db:db_dependency):
+    pet = db.query(models.Pet.porsi_makan).filter(models.Pet.pet_id == pet_id).first()
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
     porsi = pet[0]
@@ -154,17 +180,11 @@ async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
     db.close()
     return {"message": "pet updated successfully"}
 
-
-@app.put("/pet/edit/jam_makan/{pet_id}", status_code= status.HTTP_202_ACCEPTED)
-async def edit_jam_makan(update_jamMakan: updateJamMakan, pet_id: int, db: db_dependency):
-    pet = db.query(models.Pet).filter(models.Pet.pet_id == pet_id).first()
-    if not pet:
-        raise HTTPException(status_code=404, detail="Pet not found")
-    pet.jam_makan = update_jamMakan.jam_makan.strftime("%H:%M:%S")
+@app.post("/pet/history/add", status_code = status.HTTP_201_CREATED)
+async def create_history(FeedingHistory: CreateFeedingHistory, db: db_dependency):
+    db_FeedingHistory = models.FeedingHistory(**FeedingHistory.dict())
+    db.add(db_FeedingHistory)
     db.commit()
-    db.close()
-    return {"message": "jam_makan updated successfully"}
-
 
 ################ Bagian Device ################
 @app.get("/device/{user_id}",status_code=status.HTTP_200_OK)
