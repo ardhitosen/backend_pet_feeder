@@ -66,13 +66,13 @@ class DeviceCreate(DeviceBase):
 class Device(DeviceBase):
     device_id: int
     user_id: int
-    mac_address: int
+    mac_address: str
 
     class Config:
         orm_mode = True
 
 class FeedingScheduleBase(BaseModel):
-    jam_makan = time
+    jam_makan : time
 
 class ScheduleCreate(FeedingScheduleBase):
     pass
@@ -91,6 +91,15 @@ class CreateFeedingHistory(FeedingHistoryBase):
 class FeedingHistory(FeedingHistoryBase):
     feeding_id: int
     schedule_id: int
+
+    class Config:
+        orm_mode = True
+
+class InputBerat(BaseModel):
+    berat: int
+
+class Test(InputBerat):
+    test_id: int
 
     class Config:
         orm_mode = True
@@ -199,4 +208,10 @@ async def get_devices(user_id: int,db: db_dependency):
 async def create_device(devices: DeviceCreate, user_id: int, db: db_dependency):
     db_device = models.Device(**devices.dict(), user_id = user_id)
     db.add(db_device)
+    db.commit()
+
+@app.post("/test/", status_code = status.HTTP_201_CREATED)
+async def test_Berat(berat: InputBerat, db: db_dependency):
+    db_test = models.TestArduino(**berat.dict())
+    db.add(db_test)
     db.commit()
