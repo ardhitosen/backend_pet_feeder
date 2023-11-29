@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 import auth
+from jose import JWTError, jwt
+from auth import oauth2_bearer, SECRET_KEY, ALGORITHM
 
 app = FastAPI()
 app.include_router(auth.router)
@@ -132,11 +134,28 @@ def login_user(user: UserCredentials, db: Session = Depends(get_db)):
 
 ################ Bagian Pet ################
 @app.post("/pet/{pet_id}", status_code = status.HTTP_201_CREATED)
-async def create_pet(pets: PetBase, pet_id: int, db: db_dependency):
-    porsi_makan= pets.berat/1000 * 30
-    db_pet = models.Pet(**pets.dict(), pet_id = pet_id, porsi_makan = porsi_makan)
+async def create_pet(
+    pets: PetBase, pet_id: int, db: db_dependency, token: str = Depends(auth.oauth2_bearer)
+):
+    # Ensure token is valid and extract user information
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+    )
+    try:
+        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        user_id: int = payload.get("id")
+        # Check if user_id is valid, if needed
+    except JWTError:
+        raise credentials_exception
+
+    # Your existing code for creating pet goes here
+    porsi_makan = pets.berat / 1000 * 30
+    db_pet = models.Pet(**pets.dict(), pet_id=pet_id, porsi_makan=porsi_makan)
     db.add(db_pet)
     db.commit()
+
+    return {"message": "Pet created successfully"}
 
 
 @app.get("/pet/{device_id}", status_code=status.HTTP_200_OK)
@@ -205,12 +224,21 @@ async def get_devices(user_id: int,db: db_dependency):
 
 
 @app.post("/device/{user_id}", status_code = status.HTTP_201_CREATED)
-async def create_device(devices: DeviceCreate, user_id: int, db: db_dependency):
-    db_device = models.Device(**devices.dict(), user_id = user_id)
+async def create_device(
+    devices: DeviceCreate,
+    user_id: int,
+    db: db_dependency
+):
+
+    # Your existing code for creating device goes here
+    db_device = models.Device(**devices.dict(), user_id=user_id)
     db.add(db_device)
     db.commit()
+    db.refresh(db_device)
 
-@app.post("/test/", status_code = status.HTTP_201_CREATED)
+    return db_device
+
+@app.post("/test", status_code = status.HTTP_201_CREATED)
 async def test_Berat(berat: InputBerat, db: db_dependency):
     db_test = models.TestArduino(**berat.dict())
     db.add(db_test)
