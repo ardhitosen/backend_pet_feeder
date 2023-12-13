@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, status
 from datetime import time, date
 from pydantic import BaseModel
 from typing import Annotated, Optional, List
+import paho.mqtt.client as mqtt
 import models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
@@ -14,6 +15,14 @@ from auth import oauth2_bearer, SECRET_KEY, ALGORITHM
 app = FastAPI()
 app.include_router(auth.router)
 models.Base.metadata.create_all(bind = engine)
+
+mqtt_broker = "broker.emqx.io"
+mqtt_port = 1883
+mqtt_topic = "PETFEEDER012312333"
+
+mqtt_client = mqtt.Client()
+
+mqtt_client.connect(mqtt_broker, mqtt_port)
 
 app.add_middleware(
     CORSMiddleware,
@@ -236,6 +245,11 @@ async def create_device(
     db.commit()
     db.refresh(db_device)
 
+    mac_address = devices.mac_address 
+    mqtt_client.publish(mqtt_topic, mac_address)
+
+    return db_device
+
     return db_device
 
 @app.post("/test", status_code = status.HTTP_201_CREATED)
@@ -243,3 +257,9 @@ async def test_Berat(berat: InputBerat, db: db_dependency):
     db_test = models.TestArduino(**berat.dict())
     db.add(db_test)
     db.commit()
+
+@app.get("/pairing/{mac_address}", status_code = status.HTTP_200_OK) #COBA MQTT (WORKING)
+async def publish_mac_mqtt(mac_address: str):
+    mqtt_client.publish(mqtt_topic, mac_address)
+    return {"message": "mac address published"}
+
