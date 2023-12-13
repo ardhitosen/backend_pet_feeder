@@ -184,15 +184,23 @@ async def get_feedTime(pet_id: int,db: db_dependency):
     return jam_makan_str_list
 
 
-@app.put("/pet/schedule/edit/{schedule_id}", status_code = status.HTTP_202_ACCEPTED)
-async def edit_schedule(time_edited: time, schedule_id: int,db: db_dependency):
+@app.put("/pet/schedule/edit/{schedule_id}", status_code=status.HTTP_202_ACCEPTED, response_model=List[str])
+async def edit_schedule(time_edited: time, schedule_id: int, db: db_dependency):
     schedule = db.query(models.FeedingSchedule).filter(models.FeedingSchedule.schedule_id == schedule_id).first()
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
     schedule.jam_makan = time_edited
     db.commit()
-    db.close()
-    return {"message": "schedule updated"}
+    
+    updated_schedules = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == schedule.pet_id).all()
+    if updated_schedules is None:
+        raise HTTPException(status_code=404, detail="Schedules not found")
+    
+    jam_makan_str_list = [time[0].strftime("%H:%M:%S") for time in updated_schedules if time[0] is not None]
+
+    mqtt_client.publish(mqtt_topic, ','.join(jam_makan_str_list))
+    
+    return jam_makan_str_list
     
     
 @app.get("/pet/{pet_id}/foodporsion", status_code=status.HTTP_200_OK)
