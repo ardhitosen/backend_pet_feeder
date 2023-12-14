@@ -133,22 +133,8 @@ def login_user(user: UserCredentials, db: Session = Depends(get_db)):
 
 
 ################ Bagian Pet ################
-@app.post("/pet/{pet_id}", status_code = status.HTTP_201_CREATED)
-async def create_pet(
-    pets: PetBase, pet_id: int, db: db_dependency, token: str = Depends(auth.oauth2_bearer)
-):
-    # Ensure token is valid and extract user information
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-    )
-    try:
-        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
-        user_id: int = payload.get("id")
-        # Check if user_id is valid, if needed
-    except JWTError:
-        raise credentials_exception
-
+@app.post("/pet/{pet_id}", status_code=status.HTTP_201_CREATED)
+async def create_pet(pets: PetBase, pet_id: int, db: db_dependency):
     # Your existing code for creating pet goes here
     porsi_makan = pets.berat / 1000 * 30
     db_pet = models.Pet(**pets.dict(), pet_id=pet_id, porsi_makan=porsi_makan)
@@ -160,7 +146,7 @@ async def create_pet(
 
 @app.get("/pet/{device_id}", status_code=status.HTTP_200_OK)
 async def get_pet(device_id: int, db: db_dependency):
-    pet = db.query(models.Pet).filter(models.Pet.device_id == device_id).first()
+    pet = db.query(models.Pet).filter(models.Pet.pet_id == device_id).first()
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet

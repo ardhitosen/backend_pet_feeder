@@ -64,5 +64,3 @@ class TestArduino(Base):
     __tablename__ = 'testArduino'
     test_id = Column(Integer, primary_key=True, index=True)
     berat = Column(Integer)
-
-
