@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, status
-from datetime import time, date
+from datetime import time, date, datetime
 from pydantic import BaseModel
 from typing import Annotated, Optional, List
 import paho.mqtt.client as mqtt
@@ -150,6 +150,18 @@ async def create_pet(pets: PetBase, pet_id: int, db: db_dependency):
     db.add(db_pet)
     db.commit()
 
+    feeding_schedule_1 = models.FeedingSchedule(
+        jam_makan=time(hour=8, minute=0, second=0),
+        pet_id=pet_id
+    )
+    feeding_schedule_2 = models.FeedingSchedule(
+        jam_makan=time(hour=18, minute=0, second=0),
+        pet_id=pet_id
+    )
+    
+    db.add_all([feeding_schedule_1, feeding_schedule_2])
+    db.commit()
+
     return {"message": "Pet created successfully"}
 
 
@@ -161,33 +173,35 @@ async def get_pet(device_id: int, db: db_dependency):
     return pet
 
 
-@app.get("/pet/{pet_id}/feedtime",status_code=status.HTTP_200_OK, response_model=str)
-async def get_feedTime(pet_id: int,db: db_dependency):
-    feedTime = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == pet_id).all()
-    if feedTime is None:
-        raise HTTPException(status_code=404, detail="Pet not found")
-    jam_makan_str_list = [time[0].strftime("%H:%M:%S") for time in feedTime if time[0] is not None]
-    return jam_makan_str_list
+@app.get("/pet/{pet_id}/feedtime",status_code=status.HTTP_200_OK)
+async def get_feedTime(pet_id: int, db: db_dependency):
+    feedTimes = db.query(models.FeedingSchedule).filter(models.FeedingSchedule.pet_id == pet_id).all()
+    if not feedTimes:
+        raise HTTPException(status_code=404, detail="Feed times not found")
+
+    return feedTimes
 
 
 @app.put("/pet/schedule/edit/{schedule_id}", status_code=status.HTTP_202_ACCEPTED, response_model=List[str])
-async def edit_schedule(time_edited: time, schedule_id: int, db: db_dependency):
-    schedule = db.query(models.FeedingSchedule).filter(models.FeedingSchedule.schedule_id == schedule_id).first()
-    if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
-    schedule.jam_makan = time_edited
-    db.commit()
-    
-    updated_schedules = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == schedule.pet_id).all()
-    if updated_schedules is None:
-        raise HTTPException(status_code=404, detail="Schedules not found")
-    
-    jam_makan_str_list = [time[0].strftime("%H:%M:%S") for time in updated_schedules if time[0] is not None]
+async def edit_schedule(time_edited: str, schedule_id: int, db: db_dependency):
+    try:
+        schedule = db.query(models.FeedingSchedule).filter(models.FeedingSchedule.schedule_id == schedule_id).first()
+        if not schedule:
+            raise HTTPException(status_code=404, detail="Schedule not found")
+        schedule.jam_makan = datetime.strptime(time_edited, "%H:%M:%S").time()
+        db.commit()
+        
+        updated_schedules = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == schedule.pet_id).all()
+        if updated_schedules is None:
+            raise HTTPException(status_code=404, detail="Schedules not found")
+        
+        jam_makan_str_list = [time[0].strftime("%H:%M:%S") for time in updated_schedules if time[0] is not None]
 
-    mqtt_client.publish(mqtt_topic, ','.join(jam_makan_str_list))
-    
-    return jam_makan_str_list
-    
+        mqtt_client.publish(mqtt_topic, ','.join(jam_makan_str_list))
+        
+        return jam_makan_str_list
+    except Exception as e:
+        return {"error": str(e)} 
     
 @app.get("/pet/{pet_id}/foodporsion", status_code=status.HTTP_200_OK)
 async def get_foodPorsion(pet_id: int, db:db_dependency):
@@ -209,7 +223,7 @@ async def edit_pet(pet_update: PetBase, pet_id: int, db: db_dependency):
     pet.porsi_makan = new_porsi_makan
     db.commit()
     db.close()
-    return {"message": "pet updated successfully"}
+    return {"message": "pet updated successfully"} 
 
 @app.post("/pet/history/add", status_code = status.HTTP_201_CREATED)
 async def create_history(FeedingHistory: CreateFeedingHistory, db: db_dependency):
@@ -242,7 +256,7 @@ async def create_device(
     mac_address = devices.mac_address 
     mqtt_client.publish(mqtt_topic, mac_address)
 
-    return db_device
+    return {"message": "Device created successfully"}
 
     return db_device
 
