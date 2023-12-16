@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Annotated, Optional, List
 import paho.mqtt.client as mqtt
 import models
+import json
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,8 @@ mqtt_topic = "PETFEEDER012312333"
 mqtt_client = mqtt.Client()
 
 mqtt_client.connect(mqtt_broker, mqtt_port)
+
+mqtt_client.loop_start()
 
 app.add_middleware(
     CORSMiddleware,
@@ -148,32 +151,43 @@ async def get_username(user_id: int, db: db_dependency):
     return username
 
 ################ Bagian Pet ################
-@app.post("/pet/{pet_id}", status_code=status.HTTP_201_CREATED)
-async def create_pet(pets: PetBase, pet_id: int, db: db_dependency):
+@app.post("/pet/{device_id}", status_code=status.HTTP_201_CREATED)
+async def create_pet(pets: PetBase, device_id: int, db: db_dependency):
     # Your existing code for creating pet goes here
     porsi_makan = pets.berat / 1000 * 30
-    db_pet = models.Pet(**pets.dict(), pet_id=pet_id, porsi_makan=porsi_makan)
+    db_pet = models.Pet(**pets.dict(), device_id=device_id, porsi_makan=porsi_makan)
     db.add(db_pet)
     db.commit()
 
     feeding_schedule_1 = models.FeedingSchedule(
         jam_makan=time(hour=8, minute=0, second=0),
-        pet_id=pet_id
+        pet_id=db_pet.pet_id
     )
     feeding_schedule_2 = models.FeedingSchedule(
         jam_makan=time(hour=18, minute=0, second=0),
-        pet_id=pet_id
+        pet_id=db_pet.pet_id
     )
     
     db.add_all([feeding_schedule_1, feeding_schedule_2])
     db.commit()
+
+    mqtt_data = {
+        "porsi_makan": db_pet.porsi_makan,
+        "jam1": "08:00:00",
+        "jam2": "18:00:00",
+        "device_id": db_pet.device_id,
+        "choose": 2
+    }
+    mqtt_json = json.dumps(mqtt_data)
+
+    mqtt_client.publish(mqtt_topic, mqtt_json)
 
     return {"message": "Pet created successfully"}
 
 
 @app.get("/pet/{device_id}", status_code=status.HTTP_200_OK)
 async def get_pet(device_id: int, db: db_dependency):
-    pet = db.query(models.Pet).filter(models.Pet.pet_id == device_id).first()
+    pet = db.query(models.Pet).filter(models.Pet.device_id == device_id).first()
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
@@ -197,14 +211,28 @@ async def edit_schedule(time_edited: str, schedule_id: int, db: db_dependency):
         schedule.jam_makan = datetime.strptime(time_edited, "%H:%M:%S").time()
         db.commit()
         
+        pet_id = schedule.pet_id
         updated_schedules = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == schedule.pet_id).all()
         if updated_schedules is None:
             raise HTTPException(status_code=404, detail="Schedules not found")
         
+        device_id = db.query(models.Pet).filter(models.Pet.pet_id == pet_id).first().device_id
+
         jam_makan_str_list = [time[0].strftime("%H:%M:%S") for time in updated_schedules if time[0] is not None]
 
-        mqtt_client.publish(mqtt_topic, ','.join(jam_makan_str_list))
+        jam1 = jam_makan_str_list[0]
+        jam2 = jam_makan_str_list[1]
+
+        mqtt_data = {
+            "device_id": device_id,
+            "jam1": jam1,
+            "jam2": jam2,
+            "choose": 3
+        }
+        mqtt_json = json.dumps(mqtt_data)
+        mqtt_client.publish(mqtt_topic, mqtt_json)
         
+        return jam_makan_str_list
         return jam_makan_str_list
     except Exception as e:
         return {"error": str(e)} 
@@ -260,7 +288,18 @@ async def create_device(
     db.refresh(db_device)
 
     mac_address = devices.mac_address 
-    mqtt_client.publish(mqtt_topic, mac_address)
+    device_id = db_device.device_id
+
+    mqtt_data = {
+        "mac_address": mac_address,
+        "device_id": device_id,
+        "choose": 1
+    }
+
+    mqtt_json = json.dumps(mqtt_data)
+
+
+    mqtt_client.publish(mqtt_topic, mqtt_json)
 
     return {"message": "Device created successfully"}
 
