@@ -265,6 +265,14 @@ async def create_history(FeedingHistory: CreateFeedingHistory, db: db_dependency
     db.add(db_FeedingHistory)
     db.commit()
 
+@app.get("/feed/{pet_id}", status_code=status.HTTP_200_OK)
+async def get_feedHis(pet_id: int,db: db_dependency):
+    schedule_id = db.query(models.FeedingSchedule).filter(models.FeedingSchedule.pet_id == pet_id).first()
+    history = db.query(models.FeedingHistory).filter(models.FeedingHistory.schedule_id == schedule_id.schedule_id)
+    if history is None:
+        raise HTTPException(status_code=404, detail="history not found")
+    return history
+
 ################ Bagian Device ################
 @app.get("/device/{user_id}",status_code=status.HTTP_200_OK)
 async def get_devices(user_id: int,db: db_dependency):
