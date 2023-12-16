@@ -141,8 +141,8 @@ def login_user(user: UserCredentials, db: Session = Depends(get_db)):
     return db_user
 
 @app.get("/profile/{user_id}")
-async def get_username(user_id: int, db: db_dependency):
-    username = db.query(models.User).filter(models.User.user_id == uid).first()
+async def get_username(user_ID: int, db: db_dependency):
+    username = db.query(models.User).filter(models.User.user_id == user_ID).first()
     if username is None:
         raise HTTPException(status_code=404, detail="Pet not found")
     return username
