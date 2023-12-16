@@ -138,11 +138,17 @@ async def create_user(user: UserCreate, db: db_dependency):
 
 @app.post("/login")
 def login_user(user: UserCredentials, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.full_name == user.nama).first()
+    db_user = db.query(models.User).filter(models.User.nama == user.nama).first()
     if db_user is None or db_user.password != user.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
     return db_user
 
+@app.get("/profile/{user_id}")
+async def get_username(user_ID: int, db: db_dependency):
+    username = db.query(models.User).filter(models.User.user_id == user_ID).first()
+    if username is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    return username
 
 ################ Bagian Pet ################
 @app.post("/pet/{device_id}", status_code=status.HTTP_201_CREATED)
