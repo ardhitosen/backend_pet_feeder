@@ -27,30 +27,7 @@ mqtt_client = mqtt.Client()
 mqtt_client.connect(mqtt_broker, mqtt_port)
 
 mqtt_client.subscribe(mqtt_topic)
-
-def on_message(client, userdata, msg):
-    async def process_message():
-        payload = json.loads(msg.payload.decode("utf-8"))
-        cho = payload.get("cho")
-        if cho == 11:
-            mac_address = payload.get("mac_address")
-            device_id = await checkDevice(mac_address)
-            if device_id is not None:
-                porsi_makan, jam_makan1, jam_makan2 = await checkPet(device_id)
-                if porsi_makan is not None:
-                    response = {
-                        "cho": 4,
-                        "mac_address": mac_address,
-                        "device_id": device_id,
-                        "porsi_makan": porsi_makan,
-                        "jam_makan1": jam_makan1.strftime("%H:%M:%S"),
-                        "jam_makan2": jam_makan2.strftime("%H:%M:%S")    
-                    }
-                    client.publish(mqtt_topic, json.dumps(response))
-    asyncio.create_task(process_message())
     
-mqtt_client.on_message = on_message
-
 mqtt_client.loop_start()
 
 
@@ -153,26 +130,8 @@ def get_db():
     finally:
         db.close()
 
+
 db_dependency = Annotated[Session, Depends(get_db)]
-
-
-async def checkDevice(mac_address: str, db: db_dependency):
-    device = db.query(models.Device).filter(models.Device.mac_address == mac_address).first()
-    if device is None:
-        return None
-    return device.device_id 
-
-async def checkPet(device_id: int, db: db_dependency):
-    pet = db.query(models.Pet).filter(models.Pet.device_id == device_id).first()
-    if pet is None:
-        return None
-    
-    feeding_schedules = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == pet.pet_id).all()
-    jam_makan_list = [schedule.jam_makan for schedule in feeding_schedules]
-
-    jam_makan1, jam_makan2 = jam_makan_list[:2] if len(jam_makan_list) >= 2 else (time(), time())
-
-    return pet.porsi_makan, jam_makan1, jam_makan2
 
 ################ Bagian User ################
 @app.post("/user/", status_code = status.HTTP_201_CREATED)
@@ -370,3 +329,26 @@ async def publish_mac_mqtt(mac_address: str):
     mqtt_client.publish(mqtt_topic, mac_address)
     return {"message": "mac address published"}
 
+@app.get("/startup/{mac_address}", status_code = status.HTTP_200_OK)
+async def startup(mac_address: str, db: db_dependency):
+    device = db.query(models.Device).filter(models.Device.mac_address == mac_address).first()
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    pet = db.query(models.Pet).filter(models.Pet.device_id == device.device_id).first()
+    if pet is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    feeding_schedules = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == pet.pet_id).all()
+    jam_makan_list = [schedule.jam_makan for schedule in feeding_schedules]
+    jam1 = jam_makan_list[0]
+    jam2 = jam_makan_list[1]
+    #PUBLISH MQTT DISINI
+    mqtt_data = {
+        "mac_address": mac_address,
+        "device_id": device.device_id,
+        "jam1": jam1.strftime("%H:%M:%S"),
+        "jam2": jam2.strftime("%H:%M:%S"),
+        "choose": 4
+    }
+    mqtt_json = json.dumps(mqtt_data)
+    mqtt_client.publish(mqtt_topic, mqtt_json)
+    return {"message": "startup published"}
