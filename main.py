@@ -383,6 +383,7 @@ async def startup(mac_address: str, db: db_dependency):
     #PUBLISH MQTT DISINI
     mqtt_data = {
         "mac_address": mac_address,
+        "porsi_makan": pet.porsi_makan,
         "device_id": device.device_id,
         "jam1": jam1.strftime("%H:%M:%S"),
         "schedule1": schedule1,
