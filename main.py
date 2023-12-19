@@ -373,16 +373,21 @@ async def startup(mac_address: str, db: db_dependency):
     pet = db.query(models.Pet).filter(models.Pet.device_id == device.device_id).first()
     if pet is None:
         raise HTTPException(status_code=404, detail="Pet not found")
-    feeding_schedules = db.query(models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == pet.pet_id).all()
+    feeding_schedules = db.query(models.FeedingSchedule.schedule_id, models.FeedingSchedule.jam_makan).filter(models.FeedingSchedule.pet_id == pet.pet_id).all()
+    schedule_id_list = [schedule.schedule_id for schedule in feeding_schedules]
     jam_makan_list = [schedule.jam_makan for schedule in feeding_schedules]
     jam1 = jam_makan_list[0]
     jam2 = jam_makan_list[1]
+    schedule1 = schedule_id_list[0]
+    schedule2 = schedule_id_list[1]
     #PUBLISH MQTT DISINI
     mqtt_data = {
         "mac_address": mac_address,
         "device_id": device.device_id,
         "jam1": jam1.strftime("%H:%M:%S"),
+        "schedule1": schedule1,
         "jam2": jam2.strftime("%H:%M:%S"),
+        "schedule2": schedule2,
         "choose": 4
     }
     mqtt_json = json.dumps(mqtt_data)
