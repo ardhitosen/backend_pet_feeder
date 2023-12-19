@@ -181,6 +181,8 @@ async def create_pet(pets: PetBase, device_id: int, db: db_dependency):
         "jam1": "08:00:00",
         "jam2": "18:00:00",
         "device_id": db_pet.device_id,
+        "schedule1": feeding_schedule_1.schedule_id,
+        "schedule2": feeding_schedule_2.schedule_id,
         "choose": 2
     }
     mqtt_json = json.dumps(mqtt_data)
@@ -270,7 +272,7 @@ async def create_history(FeedingHistory: CreateFeedingHistory, db: db_dependency
     db.add(db_FeedingHistory)
     db.commit()
 
-@app.get("/feed/{pet_id}", status_code=status.HTTP_200_OK)
+@app.get("/feedhistory/{pet_id}", status_code=status.HTTP_200_OK)
 async def get_feed_history(pet_id: int, db: db_dependency):
     # Get the schedule_ids for the given pet_id
     schedule_ids = db.query(models.FeedingSchedule.schedule_id).filter(models.FeedingSchedule.pet_id == pet_id).all()
@@ -279,14 +281,31 @@ async def get_feed_history(pet_id: int, db: db_dependency):
         raise HTTPException(status_code=404, detail="No feeding schedules found for the given pet_id")
 
     schedule_ids = [schedule_id for schedule_id, in schedule_ids]
+    feeding_records = []
 
     # Get all feeding history records with the retrieved schedule_ids
     history = db.query(models.FeedingHistory).filter(models.FeedingHistory.schedule_id.in_(schedule_ids)).all()
 
+    for feeding_history in history:
+        schedule = db.query(models.FeedingSchedule).filter(models.FeedingSchedule.schedule_id == feeding_history.schedule_id).first()
+        if schedule:
+            formatted_time = schedule.jam_makan.strftime("%H:%M:%S")
+            
+            feeding_record = {
+                "dimakan": feeding_history.dimakan,
+                "feeding_id": feeding_history.feeding_id,
+                "schedule_id": feeding_history.schedule_id,
+                "feeding_date": feeding_history.feeding_date,
+                "time": formatted_time
+            }
+            
+            feeding_records.append(feeding_record)
+
+
     if not history:
         raise HTTPException(status_code=404, detail="Feeding history not found for the given pet_id")
 
-    return history
+    return [feeding_records]
 
 ################ Bagian Device ################
 @app.get("/device/{user_id}",status_code=status.HTTP_200_OK)
@@ -362,3 +381,10 @@ async def startup(mac_address: str, db: db_dependency):
     mqtt_json = json.dumps(mqtt_data)
     mqtt_client.publish(mqtt_topic, mqtt_json)
     return {"message": "startup published"}
+
+@app.get("/publish/history/{schedule_id}/{dimakan}", status_code = status.HTTP_200_OK)
+async def publish_history(feed: FeedingHistoryBase, schedule_id: int, dimakan: int , feeding_date: date,db: db_dependency):
+    db = models.FeedingHistory(**feed.dict(), feeding_date=date.today(), schedule_id=schedule_id)
+    db.add(db)
+    db.commit()
+    return {"message": "history published"}
