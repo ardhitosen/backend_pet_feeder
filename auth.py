@@ -20,6 +20,13 @@ router = APIRouter(
 SECRET_KEY = '9BBC40E6CA02696E20183976E4FBECD7007F2004664B5C3298D7E741BC7112C6'
 ALGORITHM = 'HS256'
 
+@app.get("/pet/{pet_id}/feedtime",status_code=status.HTTP_200_OK)
+async def get_feedTime(pet_id: int, db: db_dependency, token: str = Depends(auth.oauth2_bearer)):
+    feedTimes = db.query(models.FeedingSchedule).filter(models.FeedingSchedule.pet_id == pet_id).all()
+    if not feedTimes:
+        raise HTTPException(status_code=404, detail="Feed times not found")
+
+    return feedTimes
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='/auth/token')
 
@@ -79,3 +86,10 @@ def create_access_token(name: str, user_id: int, expires_delta: timedelta):
     expires = datetime.utcnow() + expires_delta
     encode.update({'exp': expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
