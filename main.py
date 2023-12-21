@@ -134,20 +134,6 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
 
 ################ Bagian User ################
-@app.post("/user/", status_code = status.HTTP_201_CREATED)
-async def create_user(user: UserCreate, db: db_dependency):
-    db_user = models.User(**user.dict())
-    db.add(db_user)
-    db.commit()
-    
-
-@app.post("/login")
-def login_user(user: UserCredentials, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.nama == user.nama).first()
-    if db_user is None or db_user.password != user.password:
-        raise HTTPException(status_code=400, detail="Invalid credentials")
-    return db_user
-
 @app.get("/profile/{user_id}")
 async def get_username(user_id: int, db: db_dependency):
     username = db.query(models.User).filter(models.User.user_id == user_id).first()
