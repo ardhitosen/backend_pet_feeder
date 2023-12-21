@@ -102,7 +102,6 @@ class FeedingSchedule(FeedingScheduleBase):
 
 class FeedingHistoryBase(BaseModel):
     feeding_date: date
-    schedule_id: int
     dimakan: int
 
 class CreateFeedingHistory(FeedingHistoryBase):
@@ -110,6 +109,7 @@ class CreateFeedingHistory(FeedingHistoryBase):
     
 class FeedingHistory(FeedingHistoryBase):
     feeding_id: int
+    schedule_id: int
 
     class Config:
         orm_mode = True
@@ -395,18 +395,9 @@ async def startup(mac_address: str, db: db_dependency):
     mqtt_client.publish(mqtt_topic, mqtt_json)
     return {"message": "startup published"}
 
-# @app.get("/publish/history/{schedule_id}/{dimakan}", status_code = status.HTTP_200_OK)
-# async def publish_history(feed: FeedingHistoryBase, schedule_id: int, dimakan: int , feeding_date: date,db: db_dependency):
-#     db = models.FeedingHistory(**feed.dict(), feeding_date=date.today(), schedule_id=schedule_id)
-#     db.add(db)
-#     db.commit()
-#     return {"message": "history published"}
-
 @app.get("/publish/history/{schedule_id}/{dimakan}", status_code = status.HTTP_200_OK)
-async def publish_history(schedule_id: int, dimakan: int, db: db_dependency):
-    feed_history = models.FeedingHistory(feeding_date=date.today(), schedule_id=schedule_id, dimakan=dimakan)
-    db.add(feed_history)
+async def publish_history(feed: FeedingHistoryBase, schedule_id: int, dimakan: int , feeding_date: date,db: db_dependency):
+    db = models.FeedingHistory(**feed.dict(), feeding_date=date.today(), schedule_id=schedule_id)
+    db.add(db)
     db.commit()
     return {"message": "history published"}
-
-
